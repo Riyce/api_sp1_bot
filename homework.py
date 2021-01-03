@@ -32,7 +32,7 @@ REQUEST_ERROR_MESSAGE = (
     '{exception}'
 )
 JSON_ERROR_MESSAGE = (
-    'Возникла ошибка при получении ответа от ЯП.\n'
+    'Ответ от ЯП не соответсвует ожиданиям.\n'
     '{url}\n '
     'Заголовок запроса: {headers}\n '
     'Параметры запроса: {params}\n '
@@ -40,7 +40,8 @@ JSON_ERROR_MESSAGE = (
 )
 BOT_ERROR_MESSAGE = 'Бот столкнулся с ошибкой:\n {error}'
 BOT_START_MESSAGE = 'Бот запущен.'
-MESSAGE = 'Отправлено сообщение:\n {message}'
+BOT_SEND_MESSAGE = 'Отправлено сообщение:\n {message}'
+KEY_WORDS = ['error', 'code']
 
 
 def parse_homework_status(homework):
@@ -51,44 +52,29 @@ def parse_homework_status(homework):
 
 
 def get_homework_statuses(current_timestamp):
-    params = {'from_date': current_timestamp}
+    request_data = {
+        'url': URL,
+        'params': {'from_date': current_timestamp},
+        'headers': HEADERS
+    }
     try:
-        response = requests.get(URL, headers=HEADERS, params=params)
+        response = requests.get(**request_data)
     except requests.RequestException as exception:
         raise ConnectionError(
-            REQUEST_ERROR_MESSAGE.format(
-                url=URL,
-                headers=HEADERS,
-                params=params,
-                exception=exception,
-            )
+            REQUEST_ERROR_MESSAGE.format(exception=exception, **request_data)
         )
     answer = response.json()
-    if 'code' in answer:
-        error = answer['code']
-        raise ValueError(
-            JSON_ERROR_MESSAGE.format(
-                url=URL,
-                headers=HEADERS,
-                params=params,
-                error=error,
+    for word in KEY_WORDS:
+        if word in answer:
+            error = answer[word]
+            raise KeyError(
+                JSON_ERROR_MESSAGE.format(error=error, **request_data)
             )
-        )
-    if 'error' in answer:
-        error = answer['error']
-        raise ValueError(
-            JSON_ERROR_MESSAGE.format(
-                url=URL,
-                headers=HEADERS,
-                params=params,
-                error=error,
-            )
-        )
     return answer
 
 
 def send_message(message, bot_client):
-    logging.info(MESSAGE.format(message=message))
+    logging.info(BOT_SEND_MESSAGE.format(message=message))
     return bot_client.send_message(chat_id=CHAT_ID, text=message)
 
 
