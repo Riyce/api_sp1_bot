@@ -17,31 +17,30 @@ STATUSES = {
     'reviewing':
         'Ваша работа принята к рассмотрению.',
     'approved':
-        'У вас проверили работу "{name}"!\n\n' +
+        'У вас проверили работу "{name}"!\n\n'
         'Ревьюеру всё понравилось, можно приступать к следующему уроку.',
     'rejected':
-        'У вас проверили работу "{name}"!\n\n ' +
+        'У вас проверили работу "{name}"!\n\n '
         'К сожалению в работе нашлись ошибки.',
 }
 STATUS_ERROR_MESSAGE = 'Неизвестный статус работы.\n{status}'
-REQUEST_ERROR_MESSAGE = (
-    'Невозможно получить ответ от ЯП.\n'
-    '{url}\n '
-    'Заголовок запроса: {headers}\n '
-    'Параметры запроса: {params}\n'
-    '{exception}'
-)
-JSON_ERROR_MESSAGE = (
-    'Ответ от ЯП не соответсвует ожиданиям.\n'
-    '{url}\n '
-    'Заголовок запроса: {headers}\n '
-    'Параметры запроса: {params}\n '
-    'Ошибка: {error}\n'
-)
+REQUEST_ERROR_MESSAGE = '''
+    Невозможно получить ответ от ЯП.
+    {url}
+    Заголовок запроса: {headers}
+    Параметры запроса: {params}
+    {exception}
+    '''.strip().replace('    ', '')
+JSON_ERROR_MESSAGE = '''
+    Ответ от ЯП не соответсвует ожиданиям.
+    {url}
+    Заголовок запроса: {headers}
+    Параметры запроса: {params}
+    Ошибка: {error}
+    '''.strip().replace('    ', '')
 BOT_ERROR_MESSAGE = 'Бот столкнулся с ошибкой:\n {error}'
 BOT_START_MESSAGE = 'Бот запущен.'
 BOT_SEND_MESSAGE = 'Отправлено сообщение:\n {message}'
-KEY_WORDS = ['error', 'code']
 
 
 def parse_homework_status(homework):
@@ -64,11 +63,11 @@ def get_homework_statuses(current_timestamp):
             REQUEST_ERROR_MESSAGE.format(exception=exception, **request_data)
         )
     answer = response.json()
-    for word in KEY_WORDS:
+    key_words = ['error', 'code']
+    for word in key_words:
         if word in answer:
-            error = answer[word]
-            raise KeyError(
-                JSON_ERROR_MESSAGE.format(error=error, **request_data)
+            raise requests.HTTPError(
+                JSON_ERROR_MESSAGE.format(error=answer[word], **request_data)
             )
     return answer
 
@@ -85,9 +84,9 @@ def main():
     while True:
         try:
             new_homework = get_homework_statuses(current_timestamp)
-            if new_homework.get('homeworks'):
+            if new_homework['homeworks']:
                 send_message(
-                    parse_homework_status(new_homework.get('homeworks')[0]),
+                    parse_homework_status(new_homework['homeworks'][0]),
                     bot_client,
                 )
             current_timestamp = (
